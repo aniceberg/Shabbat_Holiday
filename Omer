@@ -1,11 +1,11 @@
 /**
  *  Omer Counting
  *
- *  Author: danielbarak@live.com
+ *  Author: iceberg
  *  Date: 2018-04-04
  */
 
-// Automatically generated. Make future change here.
+// Automatically generated.
 definition(
     name: "ספירת העומר",
     namespace: "ShabbatHolidayMode",
@@ -17,23 +17,13 @@ definition(
     iconX3Url: "http://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Star_of_David.svg/200px-Star_of_David.svg.png")
 
 preferences {
-	
-	section("At Candlelighting Change Mode To:") 
-    {
-		input "startMode", "mode", title: "Mode?"
-	}
-    section("At Havdalah Change Mode To:") 
-    {
-		input "endMode", "mode", title: "Mode?"
-	}
-	section("Havdalah Offset (Usually 50 or 72)") {
-		input "havdalahOffset", "number", title: "Minutes After Sundown", required:true
-	} 
+	section("Run each day at:") {
+		input "theTime", "time", title: "Time to execute every day"
+		}
 	section( "Notifications" ) {
-        input "sendPushMessage", "enum", title: "Send a push notification?", metadata:[values:["Yes","No"]], required:false
-        input "phone", "phone", title: "Send a Text Message?", required: false
-    }
-    /**/
+        	input "sendPushMessage", "enum", title: "Send a push notification?", metadata:[values:["Yes","No"]], required:false
+        	input "phone", "phone", title: "Send a Text Message?", required: false
+		}
 }
 
 def installed() {
@@ -43,23 +33,18 @@ def installed() {
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
-	unsubscribe()
 	initialize()
 }
 
 def initialize() {
     poll();
-    schedule("0 0 8 1/1 * ? *", poll) 
+    schedule(theTime, poll) 
 }
 
 //Check hebcal for today's Omer count
 def poll()
 {
-	
-    unschedule("endChag")
-    unschedule("setChag")
 	Hebcal_WebRequest()
-
 }//END def poll()
 
 
@@ -73,12 +58,12 @@ def Hebcal_WebRequest(){
 
 def today = new Date().format("yyyy-MM-dd")
 //def today = "2018-04-04"
+//def time = new Time().format
 def hebcal_date
 def hebcal_category
 def hebcal_title
 def hebcal_hebrew
 def pushMessage
-def testmessage
 def urlRequestOmer = "http://www.hebcal.com/hebcal/?v=1&cfg=json&c=off&year=now&o=on&lg=sh"
 log.trace "${urlRequestOme}"
 
@@ -86,90 +71,22 @@ def hebcal = { response ->
 	hebcal_date = response.data.items.date
 	hebcal_category = response.data.items.category
 	hebcal_title = response.data.items.title
-  hebcal_hebrew = response.data.items.hebrew
+	hebcal_hebrew = response.data.items.hebrew
     
     for (int i = 0; i < hebcal_date.size; i++) 
     {
-    	  if(hebcal_date[i]==today)
-        {
-            if(hebcal_category[i]=="omer")
-        	  {
-                pushMessage = "Today is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
-                               
-				        sendMessage(pushMessage)
-    			      schedule(candlelighting, setChag)     
-                log.debug pushMessage
-          }//END if(hebcal_category[i]=="omer")
-     }//END if(hebcal_date[i]==today)
+	if(hebcal_date[i]==today){
+        	if(hebcal_category[i]=="omer"){
+	        	pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
+			sendMessage(pushMessage)
+    			log.debug pushMessage
+          	}//END if(hebcal_category[i]=="omer")
+	}//END if(hebcal_date[i]==today)
     }//END for (int i = 0; i < hebcal_date.size; i++)
  }//END def hebcal = { response ->
 httpGet(urlRequestOmer, hebcal);
 }//END def queryHebcal()
 
-
-//This function gets candle lighting time
-def HebCal_GetTime12(hebcal_title){
-def returnTime = hebcal_title.split(":")[1] + ":" + hebcal_title.split(":")[2] + " "
-return returnTime
-}//END def HebCal_GetTime12()
-
-//This function gets candle lighting time
-def HebCal_GetTime24(hebcal_date){
-def returnTime = hebcal_date.split("T")[1]
-returnTime = returnTime.split("-")[0]
-return returnTime
-}//END def HebCal_GetTime12()
-
-/*-----------------------------------------------
- END OF HEBCAL FUNCTIONS
------------------------------------------------*/
-def setChag()
-{
-	
-	if (location.mode != startMode) 
-	{
-		if (location.modes?.find{it.name == startMode}) 
-        {
-			setLocationMode(startMode)
-			//sendMessage("Changed the mode to '${startMode}'")
-            def dayofweek = new Date().format("EEE")
-    		if(dayofweek=='Fri'){
-				sendMessage("Shabbat Shalom!")
-    		}
-    		else{
-    			sendMessage("Chag Sameach!")
-    		}
-            
-		}//END if (location.modes?.find{it.name == startMode})
-		else 
-        {
-			sendMessage("Tried to change to undefined mode '${startMode}'")
-		}//END else
-	}//END if (location.mode != newMode)  
-    
-    unschedule("setChag")
-}//END def setChag()
-
-
-def endChag()
-{
-	
-	if (location.mode != endMode) 
-	{
-		if (location.modes?.find{it.name == endMode}) 
-        {
-			setLocationMode(endMode)
-			sendMessage("Changed the mode to '${endMode}'")
-		}//END if (location.modes?.find{it.name == endMode})
-		else 
-        {
-			sendMessage("Tried to change to undefined mode '${endMode}'")
-		}//END else
-	}//END if (location.mode != endMode)
-    
-	//sendMessage("Shavuah Tov!")
-    unschedule("endChag")
-}//END def setChag()
 
 def sendMessage(msg){
 if ( sendPushMessage != "No" ) {
