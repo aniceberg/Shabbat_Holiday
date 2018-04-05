@@ -28,8 +28,8 @@ preferences {
 			description: "Phone Number", required: false
       		 	}
     		}
-	section("Push Notifications?") {
-				input "sendPush", "bool", required: false, title: "Send push notifications to"
+	section("Enable Push Notifications?") {
+				input "sendPush", "bool", required: false, title: "Enable push notifications"
 		}
 }
 
