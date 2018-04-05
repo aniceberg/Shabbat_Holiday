@@ -24,11 +24,13 @@ preferences {
 		}
 	section("Send Notifications?") {
         	input("recipients", "contact", title: "Send notifications to") {
-            		input "sendPush", "bool", required: false, title: "Send Push Notifications?"
-			input "phone", "phone", title: "Send via text message",
+            		input "phone", "phone", title: "Send via text message",
 			description: "Phone Number", required: false
       		 	}
     		}
+	section("Push Notifications?") {
+				input "sendPush", "bool", required: false, title: "Send push notifications to"
+		}
 }
 
 def installed() {
@@ -102,5 +104,7 @@ def sendMessage(msg){
 		sendSms( phone, msg )
 		log.debug "Contact Book not enabled"
 		log.debug "sending text message"
-        }
+        } else if (sendPush) { // check that the user selected push notifications
+        	sendPush( phone, msg )
+	}
 }//END def sendMessage(msg)
