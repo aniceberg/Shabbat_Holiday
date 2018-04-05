@@ -21,10 +21,12 @@ preferences {
 	section("Run each day at:") {
 		input "theTime", "time", title: "Time to execute every day"
 		}
-	section( "Notifications" ) {
-        	input "sendPushMessage", "enum", title: "Send a push notification?", metadata:[values:["Yes","No"]], required:false
-        	input "phone", "phone", title: "Send a Text Message?", required: false
-		}
+	section("Send Notifications?") {
+        	input("recipients", "contact", title: "Send notifications to") {
+            	input "phone", "phone", title: "Send via text message",
+			description: "Phone Number", required: false
+      		  	}
+    		}
 }
 
 def installed() {
@@ -90,13 +92,13 @@ httpGet(urlRequestOmer, hebcal);
 
 
 def sendMessage(msg){
-if ( sendPushMessage != "No" ) {
-        log.debug( "sending push message" )
-        //sendPush( msg )
-    }
-
-    if ( phone ) {
-        log.debug( "sending text message" )
-        sendSms( phone, msg )
-    }
+	if (location.contactBookEnabled && recipients) {
+		sendNotificationToContacts(msg, recipients)
+		log.debug "Contact Book enabled!"
+		log.debug "Sending push message"
+	} else if (phone) { // check that the user did select a phone number
+		sendSms( phone, msg )
+		log.debug "Contact Book not enabled"
+		log.debug "sending text message"
+        }
 }//END def sendMessage(msg)
