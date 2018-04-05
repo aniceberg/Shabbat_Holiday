@@ -65,7 +65,7 @@ def hebcal_title
 def hebcal_hebrew
 def pushMessage
 def urlRequestOmer = "http://www.hebcal.com/hebcal/?v=1&cfg=json&c=off&year=now&o=on&lg=sh"
-log.trace "${urlRequestOme}"
+log.trace "${urlRequestOmer}"
 
 def hebcal = { response ->
 	hebcal_date = response.data.items.date
@@ -78,7 +78,7 @@ def hebcal = { response ->
 	if(hebcal_date[i]==today){
         	if(hebcal_category[i]=="omer"){
 	        	pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
-			sendMessage(pushMessage)
+				sendMessage(pushMessage)
     			log.debug pushMessage
           	}//END if(hebcal_category[i]=="omer")
 	}//END if(hebcal_date[i]==today)
