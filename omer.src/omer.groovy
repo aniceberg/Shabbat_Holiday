@@ -8,8 +8,8 @@
 
 // Automatically generated.
 definition(
-    name: "ספירת העומר",
-    namespace: "shabbat-holiday",
+    name: "omer",
+    namespace: "aniceberg",
     author: "iceberg",
     description: "Announces the Omer each day after nightfall",
     category: "My Apps",
