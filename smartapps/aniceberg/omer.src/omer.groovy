@@ -9,7 +9,7 @@
 
 // Automatically generated.
 definition(
-    name: "omer",
+    name: "Omer",
     namespace: "aniceberg",
     author: "iceberg",
     description: "Announces the Omer each day after nightfall",
