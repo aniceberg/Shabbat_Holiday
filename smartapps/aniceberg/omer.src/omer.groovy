@@ -3,6 +3,7 @@
  *
  *  Author: iceberg
  *  Date: 2018-04-05
+ *  v0.2 - added push notifications
  *  v0.1 - initial release
  */
 
@@ -23,9 +24,10 @@ preferences {
 		}
 	section("Send Notifications?") {
         	input("recipients", "contact", title: "Send notifications to") {
-            	input "phone", "phone", title: "Send via text message",
+            		input "sendPush", "bool", required: false, title: "Send Push Notifications?"
+			input "phone", "phone", title: "Send via text message",
 			description: "Phone Number", required: false
-      		  	}
+      		 	}
     		}
 }
 
