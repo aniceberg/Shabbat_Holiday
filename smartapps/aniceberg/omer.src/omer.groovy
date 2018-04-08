@@ -39,10 +39,10 @@ def mainPage() {
 	section("Enable Push Notifications?") {
 		input "sendPush", "bool", required: false, title: "Enable push notifications"
 		}
-	section("Announce Omer reminder on smart speakers?" {
+	section("Announce Omer reminder on smart speakers?") {
 		input "speakers", "capability.musicPlayer", title: "On these speakers", required: false,multiple:true
 		}
-        section ("Temporarily change speaker volume?"){
+	section("Temporarily change speaker volume?") {
 		input "volume", "number", title: "Select reminder volume", description: "0-100%", required: false
 		}
 	section{  
@@ -57,6 +57,7 @@ def mainPage() {
             		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
             		}
 		}
+	}
 }
 def ttsSettings() {
 	dynamicPage(name: "ttsSettings") {
@@ -153,7 +154,6 @@ def sendMessage(msg){
             }else {
             	speaker.playTrackAndResume(speech.uri, speech.duration, volume)
             }
-            break
 	}//END IF (speakers)	
 }//END def sendMessage(msg)
 
