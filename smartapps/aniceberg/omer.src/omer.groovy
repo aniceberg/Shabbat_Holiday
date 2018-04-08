@@ -40,7 +40,7 @@ def mainPage() {
 		input "sendPush", "bool", required: false, title: "Enable push notifications"
 		}
 	section("Announce Omer reminder on smart speakers?") {
-		input "speakers", "capability.musicPlayer", title: "On these speakers", required: false,multiple:true
+		input "speakers", "capability.musicPlayer", title: "On these speakers", hideWhenEmpty: true, required: false, multiple:true
 		}
 	section("Temporarily change speaker volume?") {
 		input "volume", "number", title: "Select reminder volume", description: "0-100%", required: false
