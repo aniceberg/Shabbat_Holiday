@@ -31,13 +31,13 @@ def mainPage() {
 		input "theTime", "time", title: "Time to execute every day"
 		}
 	section("Send Notifications?") {
-        	input("recipients", "contact", title: "Send notifications to") {
+        	input("recipients", "contact", required: false, title: "Send notifications to") {
             		input "phone", "phone", title: "Send via text message",
 			description: "Phone Number", required: false
       		 	}
     		}
 	section("Enable Push Notifications?") {
-		input "sendPush", "bool", required: false, title: "Enable push notifications"
+		input "sendPushMessage", "bool", required: false, title: "Enable push notifications"
 		}
 	section("Announce Omer reminder on smart speakers?") {
 		input "speakers", "capability.musicPlayer", title: "On these speakers", hideWhenEmpty: true, required: false, multiple:true
@@ -84,7 +84,6 @@ def updated() {
 }
 
 def initialize() {
-    poll();
     schedule(theTime, poll) 
 }
 
@@ -110,6 +109,7 @@ def Hebcal_WebRequest(){
 	def hebcal_title
 	def hebcal_hebrew
 	def pushMessage
+    def speakMessage
 	def urlRequestOmer = "http://www.hebcal.com/hebcal/?v=1&cfg=json&c=off&year=now&o=on&lg=sh"
 	log.trace "${urlRequestOmer}"
 
@@ -123,8 +123,10 @@ def Hebcal_WebRequest(){
 		if(hebcal_date[i]==today){
 			if(hebcal_category[i]=="omer"){
 				pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
-				sendMessage(pushMessage)
+                speakMessage = "Tonight is the ${hebcal_title[i]}"
+				sendMessage(pushMessage,speakMessage)
 				log.debug pushMessage
+                log.debug speakMessage
 			}//END if(hebcal_category[i]=="omer")
 		}//END if(hebcal_date[i]==today)
 	}//END for (int i = 0; i < hebcal_date.size; i++)
@@ -134,42 +136,44 @@ httpGet(urlRequestOmer, hebcal);
 }//END def queryHebcal()
 
 
-def sendMessage(msg){
+def sendMessage(textmsg,speakmsg){
 	if (location.contactBookEnabled && recipients) {
-		sendNotificationToContacts(msg, recipients)
+		sendNotificationToContacts(textmsg, recipients)
 		log.debug "Contact Book enabled!"
 		log.debug "Sending push message"
 	} else if (phone) { // check that the user did select a phone number
-		sendSms( phone, msg )
+		sendSms( phone, textmsg )
 		log.debug "Contact Book not enabled"
 		log.debug "sending text message"
         } 
-	if (sendPush) { // check that the user selected push notifications
-        	sendPush( phone, msg )
+	if (sendPushMessage) { // check that the user selected push notifications
+        	sendPush( textmsg )
 	}//END IF (sendPush)
 	if (speakers) { //check if speakers are selected
-		safeTextToSpeech(msg)
+		safeTextToSpeech(speakmsg)
 		if(ttsMode == "Alexa" && !message.contains("#s")) {
-                	speaker.playTrack(speech.uri)
+                	speaker.playTrack(speakmsg.uri)
             }else {
-            	speaker.playTrackAndResume(speech.uri, speech.duration, volume)
+            	speaker.playTrackAndResume(speakmsg.uri, speakmsg.duration, volume)
             }
 	}//END IF (speakers)	
 }//END def sendMessage(msg)
 
 private safeTextToSpeech(message) {
     switch(ttsMode){
-        case "Alexa":
-        	[uri: "x-rincon-mp3radio://tts.freeoda.com/alexa.php/" + "?key=$alexaApiKey&text=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-" , duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
-        break
-        default:
-            try {
-            	textToSpeech(message,stLanguage.substring(6))
-            }
-            catch (Throwable t) {
-                log.error t
-                textToSpeechT(message)
-            }
-         break
+		case "Alexa":
+		log.debug "Alexa TTS Mode called"
+		[uri: "x-rincon-mp3radio://tts.freeoda.com/alexa.php/" + "?key=$alexaApiKey&text=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-" , duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
+		break
+		default:
+		try {
+            log.debug "Attempting default TTS method"
+            textToSpeech(message,stLanguage.substring(6))
+		}
+		catch (Throwable t) {
+			log.error "Error in attempting default TTS method"
+			textToSpeechT(message)
+		}
+		break
     }
 }
