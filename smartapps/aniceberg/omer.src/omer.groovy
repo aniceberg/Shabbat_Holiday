@@ -27,8 +27,9 @@ preferences {
 def mainPage() {
 	dynamicPage(name: "mainPage") {
 		
-	section("Run each day at:") {
-		input "theTime", "time", title: "Time to execute every day"
+	section("Remind me each day at:") {
+    	input "offset", "number", title: "How many minutes after sunset? Set to 0 to disable.", defaultValue: "40"
+		//input "theTime", "time", title: "Time to execute every day", defaultValue: "21:00", required: tzet != "0" ? true:false
 		}
 	section("Send Notifications?") {
         	input("recipients", "contact", required: false, title: "Send notifications to") {
@@ -66,8 +67,8 @@ def ttsSettings() {
             input "ttsMode", "enum", title: "Mode?", required: true, defaultValue: "SmartThings",submitOnChange:true, options: ["SmartThings","Google","Alexa"]
             input "stLanguage", "enum", title: "SmartThings Voice?", required: true, defaultValue: "en-US Salli", options: ["da-DK Naja","da-DK Mads","de-DE Marlene","de-DE Hans","en-US Salli","en-US Joey","en-AU Nicole","en-AU Russell","en-GB Amy","en-GB Brian","en-GB Emma","en-GB Gwyneth","en-GB Geraint","en-IN Raveena","en-US Chipmunk","en-US Eric","en-US Ivy","en-US Jennifer","en-US Justin","en-US Kendra","en-US Kimberly","es-ES Conchita","es-ES Enrique","es-US Penelope","es-US Miguel","fr-CA Chantal","fr-FR Celine","fr-FR Mathieu","is-IS Dora","is-IS Karl","it-IT Carla","it-IT Giorgio","nb-NO Liv","nl-NL Lotte","nl-NL Ruben","pl-PL Agnieszka","pl-PL Jacek","pl-PL Ewa","pl-PL Jan","pl-PL Maja","pt-BR Vitoria","pt-BR Ricardo","pt-PT Cristiano","pt-PT Ines","ro-RO Carmen","ru-RU Tatyana","ru-RU Maxim","sv-SE Astrid","tr-TR Filiz"]
             input "googleLanguage", "enum", title: "Google Voice?", required: true, defaultValue: "en", options: ["af":"Afrikaans","sq":"Albanian","ar":"Arabic","hy":"Armenian","ca":"Catalan","zh-CN":"Mandarin (simplified)","zh-TW":"Mandarin (traditional)","hr":"Croatian","cs":"Czech","da":"Danish","nl":"Dutch","en":"English","eo":"Esperanto","fi":"Finnish","fr":"French","de":"German","el":"Greek","ht":"Haitian Creole","hi":"Hindi","hu":"Hungarian","is":"Icelandic","id":"Indonesian","it":"Italian","ja":"Japanese","ko":"Korean","la":"Latin","lv":"Latvian","mk":"Macedonian","no":"Norwegian","pl":"Polish","pt":"Portuguese","ro":"Romanian","ru":"Russian","sr":"Serbian","sk":"Slovak","es":"Spanish","sw":"Swahili","sv":"Swedish","ta":"Tamil","th":"Thai","tr":"Turkish","vi":"Vietnamese","cy":"Welsh"]
-            input "ttsLanguage", "enum", title: "RSS Language?", required: true, defaultValue: "en-us",options: languageOptions
-            input "alexaApiKey", "text", title: "Alexa Access Key", required: ttsMode == "Alexa" ? true:false,  defaultValue:"millave"
+            input "ttsLanguage", "enum", title: "TTS Language?", required: true, defaultValue: "en-us",options: languageOptions
+            input "ttsApiKey", "text", title: "Alexa Access Key", required: ttsMode == "Alexa" ? true:false,  defaultValue:"millave"
         }
 	}
 }
@@ -80,11 +81,33 @@ def installed() {
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
+    unsubscribe()
 	initialize()
 }
 
 def initialize() {
-    schedule(theTime, poll) 
+    subscribe(location, "sunsetTime", sunsetTimeHandler)
+    //schedule it to run today too
+    scheduleRemind(location.currentValue("sunsetTime"))
+   
+   //schedule(theTime, poll) 
+}
+
+def sunsetTimeHandler(evt) {
+    //when I find out the sunset time, schedule the Omer reminder with an offset
+    scheduleRemind(evt.value)
+}
+
+def scheduleRemind(sunsetString) {
+    //get the Date value for the string
+    def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", sunsetString)
+
+    //calculate the offset
+    def timeAfterSunset = new Date(sunsetTime.time + (offset * 60 * 1000))
+    log.debug "Scheduled for: $timeAfterSunset (sunset is $sunsetTime)"
+
+    //schedule this to run
+    schedule(timeAfterSunset, poll)
 }
 
 //Check hebcal for today's Omer count
@@ -150,6 +173,7 @@ def sendMessage(textmsg,speakmsg){
         	sendPush( textmsg )
 	}//END IF (sendPush)
 	if (speakers) { //check if speakers are selected
+    	log.debug "Speakers: $speakers enabled."
 		safeTextToSpeech(speakmsg)
 		if(ttsMode == "Alexa" && !message.contains("#s")) {
                 	speaker.playTrack(speakmsg.uri)
@@ -160,6 +184,7 @@ def sendMessage(textmsg,speakmsg){
 }//END def sendMessage(msg)
 
 private safeTextToSpeech(message) {
+	log.debug "Encoding: '$message' to speech"
     switch(ttsMode){
 		case "Alexa":
 		log.debug "Alexa TTS Mode called"
@@ -175,5 +200,16 @@ private safeTextToSpeech(message) {
 			textToSpeechT(message)
 		}
 		break
+    }
+}
+
+private textToSpeechT(message){
+    if (message) {
+    	if (ttsApiKey){
+            [uri: "x-rincon-mp3radio://api.voicerss.org/" + "?key=$ttsApiKey&hl=en-us&r=0&f=48khz_16bit_mono&src=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-" , duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
+        }else{
+        	message = message.length() >100 ? message[0..90] :message
+        	[uri: "x-rincon-mp3radio://www.translate.google.com/translate_tts?tl=en&client=t&q=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-", duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
+     	}
     }
 }
