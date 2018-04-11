@@ -21,7 +21,7 @@ definition(
 
 preferences {
 	page(name: "mainPage", title: "Setup your Omer reminders", install: true, uninstall: true)	
-	page(name: "ttsSettings", title: "Text to Speech settings")
+	page(name: "ttsSettings", title: "Text To Speech settings")
 }
 
 def mainPage() {
@@ -30,18 +30,16 @@ def mainPage() {
     section("Location:") {
     	input "autoLocation", "boolean", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
         
-	if (!autoLocation) {
+	if (autoLocation=="false") {
         	input"locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
         }
     }
 	section("Remind me each day at:") {
 		input "offset", "number", title: "How many minutes after sunset? (Typically 40 or 50) Set to '0' to manually choose a time.", defaultValue: "40", range: "0..*",  required: true, submitOnChange: true
+	    if (offset==0) {
+    		input "theTime", "time", title: "Select static reminder time:"
+		}
 	}
-    if (offset==0) {
-    	section {
-    		input "theTime", "time", title: "Remind at"
-            }
-	}	
 	section("Send Notifications?") {
 		input("recipients", "contact", required: false, title: "Send notifications to") {
 			input "phone", "phone", title: "Send via text message", description: "Phone Number", required: false
@@ -90,8 +88,8 @@ def updated() {
 
 def initialize() {
     
-	if (offset!=0){
-    	if (autoLocation) {
+	if (offset>0){
+    	if (autoLocation=="true") {
         subscribe(location, "sunsetTime", sunsetTimeHandler)
     	scheduleRemind(location.currentValue("sunsetTime"))
         } else {
@@ -147,7 +145,7 @@ def Hebcal_WebRequest(){
 	def hebcal_hebrew
 	def pushMessage
     def speakMessage
-	def urlRequestOmer = "http://www.hebcal.com/hebcal/?v=1&cfg=json&c=off&year=now&o=on&lg=sh"
+    def urlRequestOmer = "http://www.hebcal.com/hebcal/?v=1&cfg=json&c=off&year=now&o=on&lg=sh"
 	log.trace "${urlRequestOmer}"
 
 	def hebcal = { response ->
@@ -160,10 +158,8 @@ def Hebcal_WebRequest(){
 		if(hebcal_date[i]==today){
 			if(hebcal_category[i]=="omer"){
                 pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
-                speakMessage = "Tonight is the ${hebcal_title[i]}"
+				speakMessage = "Tonight is the ${hebcal_title[i]}"
 				sendMessage(pushMessage,speakMessage)
-				log.debug pushMessage
-                log.debug speakMessage
 			}//END if(hebcal_category[i]=="omer")
 		}//END if(hebcal_date[i]==today)
 	}//END for (int i = 0; i < hebcal_date.size; i++)
@@ -177,7 +173,7 @@ def sendMessage(textmsg,speakmsg){
 	if (location.contactBookEnabled && recipients) {
 		sendNotificationToContacts(textmsg, recipients)
 		log.debug "Contact Book enabled!"
-		log.debug "Sending push message"
+		log.debug "Message sent!"
 	} else if (phone) { // check that the user did select a phone number
 		sendSms( phone, textmsg )
 		log.debug "Contact Book not enabled"
@@ -186,28 +182,27 @@ def sendMessage(textmsg,speakmsg){
 	if (sendPushMessage) { // check that the user selected push notifications
         	sendPush( textmsg )
 	}//END IF (sendPush)
-	if (speakers) { //check if speakers are selected
+	if (speakers) { //check if speakers are available and selected
     	log.debug "Speakers: $speakers enabled."
 		safeTextToSpeech(speakmsg)
 		if(ttsMode == "Alexa" && !message.contains("#s")) {
-                	speaker.playTrack(speakmsg.uri)
+                	speakers.playTrack(speakmsg.uri)
             }else {
-            	speaker.playTrackAndResume(speakmsg.uri, speakmsg.duration, volume)
+            	speakers.playTrackAndResume(speakmsg.uri, speakmsg.duration, volume)
             }
 	}//END IF (speakers)	
 }//END def sendMessage(msg)
 
 private safeTextToSpeech(message) {
-	log.debug "Encoding: '$message' to speech"
+	log.debug "Encoding: '${message}' to speech"
     switch(ttsMode){
 		case "Alexa":
 		log.debug "Alexa TTS Mode called"
 		[uri: "x-rincon-mp3radio://tts.freeoda.com/alexa.php/" + "?key=$alexaApiKey&text=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-" , duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
-		break
 		default:
 		try {
             log.debug "Attempting default TTS method"
-            textToSpeech(message,stLanguage.substring(6))
+            state.sound = textToSpeech(message,stLanguage.substring(6))
 		}
 		catch (Throwable t) {
 			log.error "Error in attempting default TTS method"
