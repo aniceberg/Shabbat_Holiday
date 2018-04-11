@@ -26,37 +26,40 @@ preferences {
 
 def mainPage() {
 	dynamicPage(name: "mainPage") {
-		
+	
+    section("Location:") {
+    	input "autoLocation", "boolean", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
+        
+	if (!autoLocation) {
+        	input"locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
+        }
+    }
 	section("Remind me each day at:") {
-    	input "offset", "number", title: "How many minutes after sunset? Set to 0 to disable.", defaultValue: "40"
-		//input "theTime", "time", title: "Time to execute every day", defaultValue: "21:00", required: tzet != "0" ? true:false
-		}
+		input "offset", "number", title: "How many minutes after sunset? (Typically 40 or 50) Set to '0' to manually choose a time.", defaultValue: "40", range: "0..*",  required: true, submitOnChange: true
+	}
+    if (offset==0) {
+    	section {
+    		input "theTime", "time", title: "Remind at"
+            }
+	}	
 	section("Send Notifications?") {
-        	input("recipients", "contact", required: false, title: "Send notifications to") {
-            		input "phone", "phone", title: "Send via text message",
-			description: "Phone Number", required: false
-      		 	}
-    		}
+		input("recipients", "contact", required: false, title: "Send notifications to") {
+			input "phone", "phone", title: "Send via text message", description: "Phone Number", required: false
+			}
+		}
 	section("Enable Push Notifications?") {
 		input "sendPushMessage", "bool", required: false, title: "Enable push notifications"
 		}
-	section("Announce Omer reminder on smart speakers?") {
-		input "speakers", "capability.musicPlayer", title: "On these speakers", hideWhenEmpty: true, required: false, multiple:true
-		}
-	section("Temporarily change speaker volume?") {
-		input "volume", "number", title: "Select reminder volume", description: "0-100%", required: false
-		}
-	section{  
-		href "ttsSettings", title: "Text for Speech Settings",required:false, description:ttsMode
-        	}	
-	section("More options", hideable: true, hidden: true) {
+	section(hideWhenEmpty: true, "Announce Omer reminder on smart speakers?") {
+		input "speakers", "capability.musicPlayer", title: "On these speakers", multiple:true, required: false
+        input "volume", "number", title: "Select reminder volume", description: "0-100%", required: false
 		input "onPlay", "bool", title: "Only announce if nothing playing?", required: false, defaultValue: false
 		input "resumePlaying", "bool", title: "Resume currently playing audio after notification?", required: false, defaultValue: true
+        href "ttsSettings", title: "Text for Speech Settings",required:false, description:ttsMode
+		}
+	section("More options", hideable: true, hidden: true) {
 		input "days", "enum", title: "Only announce on certain days of the week?", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-		if (settings.modes) {
-            		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
-            		}
 		}
 	}
 }
@@ -86,25 +89,36 @@ def updated() {
 }
 
 def initialize() {
-    subscribe(location, "sunsetTime", sunsetTimeHandler)
-    //schedule it to run today too
-    scheduleRemind(location.currentValue("sunsetTime"))
-   
-   //schedule(theTime, poll) 
+    
+	if (offset!=0){
+    	if (autoLocation) {
+        subscribe(location, "sunsetTime", sunsetTimeHandler)
+    	scheduleRemind(location.currentValue("sunsetTime"))
+        } else {
+			def s = getSunriseAndSunset(zipCode: locationZIP, sunsetOffset: +offset)
+        	log.debug "Manual schedule for ${locationZIP} local sunset is ${s.sunset}"
+        	schedule(s.sunset, poll)
+        }
+	} else if (offset==0) {
+    	log.debug "Reminder time set to ${theTime} for all days."
+        schedule(theTime, poll)
+	}
 }
 
-def sunsetTimeHandler(evt) {
+def sunsetTimeHandler(event) {
     //when I find out the sunset time, schedule the Omer reminder with an offset
-    scheduleRemind(evt.value)
+    log.debug "Sunset for location is ${event.value}"
+    scheduleRemind(event.value)
 }
 
 def scheduleRemind(sunsetString) {
     //get the Date value for the string
     def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", sunsetString)
+    log.debug "Sunset is ${sunsetTime}"
 
     //calculate the offset
     def timeAfterSunset = new Date(sunsetTime.time + (offset * 60 * 1000))
-    log.debug "Scheduled for: $timeAfterSunset (sunset is $sunsetTime)"
+    log.debug "Automatically scheduled for: ${timeAfterSunset} (which is ${offset} minutes after sunset at ${sunsetTime})"
 
     //schedule this to run
     schedule(timeAfterSunset, poll)
@@ -145,7 +159,7 @@ def Hebcal_WebRequest(){
 	for (int i = 0; i < hebcal_date.size; i++) {
 		if(hebcal_date[i]==today){
 			if(hebcal_category[i]=="omer"){
-				pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
+                pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
                 speakMessage = "Tonight is the ${hebcal_title[i]}"
 				sendMessage(pushMessage,speakMessage)
 				log.debug pushMessage
