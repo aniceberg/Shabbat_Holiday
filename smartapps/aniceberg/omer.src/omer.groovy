@@ -107,7 +107,8 @@ def scheduleRemind(sunsetString) {
 
 //Check hebcal for today's Omer count
 def poll() {
-	Hebcal_WebRequest()
+	//insert Mode() test here
+    Hebcal_WebRequest()
 }//END def poll()
 
 
