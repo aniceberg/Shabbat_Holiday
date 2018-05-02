@@ -21,56 +21,39 @@ definition(
 
 preferences {
 	page(name: "mainPage", title: "Setup your Omer reminders", install: true, uninstall: true)	
-	page(name: "ttsSettings", title: "Text To Speech settings")
 }
 
 def mainPage() {
 	dynamicPage(name: "mainPage") {
 	
-    section("Location:") {
-    	input "autoLocation", "boolean", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
+    section("Location") {
+    	input "autoLocation", "bool", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
         
 	if (autoLocation=="false") {
         	input"locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
         }
     }
 	section("Remind me each day at:") {
-		input "offset", "number", title: "How many minutes after sunset? (Typically 40 or 50) Set to '0' to manually choose a time.", defaultValue: "40", range: "0..*",  required: true, submitOnChange: true
+		input "offset", "number", title: "How many minutes after sunset? (Typically 40 or 50) Set to '0' to set a manual reminder time.", defaultValue: "40", range: "0..*",  required: true, submitOnChange: true
 	    if (offset==0) {
-    		input "theTime", "time", title: "Select static reminder time:"
+    		input "theTime", "time", title: "Select manual reminder time (e.g. '9:00PM'):"
 		}
 	}
-	section("Send Notifications?") {
-		input("recipients", "contact", required: false, title: "Send notifications to") {
-			input "phone", "phone", title: "Send via text message", description: "Phone Number", required: false
+	section("Notifications") {
+		input("recipients", "contact", required: false, title: "Send notifications to:") {
+			input "sendPushMessage", "bool", title: "Enable push notifications:", required: false, defaultValue: false
+            input "phone", "phone", title: "Send text message to:", description: "Phone number", required: false
 			}
 		}
-	section("Enable Push Notifications?") {
-		input "sendPushMessage", "bool", required: false, title: "Enable push notifications"
-		}
 	section(hideWhenEmpty: true, "Announce Omer reminder on smart speakers?") {
-		input "speakers", "capability.musicPlayer", title: "On these speakers", multiple:true, required: false
-        input "volume", "number", title: "Select reminder volume", description: "0-100%", required: false
-		input "onPlay", "bool", title: "Only announce if nothing playing?", required: false, defaultValue: false
-		input "resumePlaying", "bool", title: "Resume currently playing audio after notification?", required: false, defaultValue: true
-        href "ttsSettings", title: "Text for Speech Settings",required:false, description:ttsMode
+		input "speakers", "capability.speechSynthesis", title: "On these speakers", multiple:true, required: false
+        input "speakerVolume", "number", title: "Select reminder volume", description: "0-100%", required: false
 		}
 	section("More options", hideable: true, hidden: true) {
 		input "days", "enum", title: "Only announce on certain days of the week?", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
 		}
-	}
-}
-def ttsSettings() {
-	dynamicPage(name: "ttsSettings") {
-        def languageOptions = ["ca-es":"Catalan","zh-cn":"Chinese (China)","zh-hk":"Chinese (Hong Kong)","zh-tw":"Chinese (Taiwan)","da-dk":"Danish","nl-nl":"Dutch","en-au":"English (Australia)","en-ca":"English (Canada)","en-gb":"English (Great Britain)","en-in":"English (India)","en-us":"English (United States)","fi-fi":"Finnish","fr-ca":"French (Canada)","fr-fr":"French (France)","de-de":"German","it-it":"Italian","ja-jp":"Japanese","ko-kr":"Korean","nb-no":"Norwegian","pl-pl":"Polish","pt-br":"Portuguese (Brazil)","pt-pt":"Portuguese (Portugal)","ru-ru":"Russian","es-mx":"Spanish (Mexico)","es-es":"Spanish (Spain)","sv-se":"Swedish (Sweden)"]
- 		section() {
-            input "ttsMode", "enum", title: "Mode?", required: true, defaultValue: "SmartThings",submitOnChange:true, options: ["SmartThings","Google","Alexa"]
-            input "stLanguage", "enum", title: "SmartThings Voice?", required: true, defaultValue: "en-US Salli", options: ["da-DK Naja","da-DK Mads","de-DE Marlene","de-DE Hans","en-US Salli","en-US Joey","en-AU Nicole","en-AU Russell","en-GB Amy","en-GB Brian","en-GB Emma","en-GB Gwyneth","en-GB Geraint","en-IN Raveena","en-US Chipmunk","en-US Eric","en-US Ivy","en-US Jennifer","en-US Justin","en-US Kendra","en-US Kimberly","es-ES Conchita","es-ES Enrique","es-US Penelope","es-US Miguel","fr-CA Chantal","fr-FR Celine","fr-FR Mathieu","is-IS Dora","is-IS Karl","it-IT Carla","it-IT Giorgio","nb-NO Liv","nl-NL Lotte","nl-NL Ruben","pl-PL Agnieszka","pl-PL Jacek","pl-PL Ewa","pl-PL Jan","pl-PL Maja","pt-BR Vitoria","pt-BR Ricardo","pt-PT Cristiano","pt-PT Ines","ro-RO Carmen","ru-RU Tatyana","ru-RU Maxim","sv-SE Astrid","tr-TR Filiz"]
-            input "googleLanguage", "enum", title: "Google Voice?", required: true, defaultValue: "en", options: ["af":"Afrikaans","sq":"Albanian","ar":"Arabic","hy":"Armenian","ca":"Catalan","zh-CN":"Mandarin (simplified)","zh-TW":"Mandarin (traditional)","hr":"Croatian","cs":"Czech","da":"Danish","nl":"Dutch","en":"English","eo":"Esperanto","fi":"Finnish","fr":"French","de":"German","el":"Greek","ht":"Haitian Creole","hi":"Hindi","hu":"Hungarian","is":"Icelandic","id":"Indonesian","it":"Italian","ja":"Japanese","ko":"Korean","la":"Latin","lv":"Latvian","mk":"Macedonian","no":"Norwegian","pl":"Polish","pt":"Portuguese","ro":"Romanian","ru":"Russian","sr":"Serbian","sk":"Slovak","es":"Spanish","sw":"Swahili","sv":"Swedish","ta":"Tamil","th":"Thai","tr":"Turkish","vi":"Vietnamese","cy":"Welsh"]
-            input "ttsLanguage", "enum", title: "TTS Language?", required: true, defaultValue: "en-us",options: languageOptions
-            input "ttsApiKey", "text", title: "Alexa Access Key", required: ttsMode == "Alexa" ? true:false,  defaultValue:"millave"
-        }
 	}
 }
 		
@@ -158,8 +141,8 @@ def Hebcal_WebRequest(){
 		if(hebcal_date[i]==today){
 			if(hebcal_category[i]=="omer"){
                 pushMessage = "Tonight is ${hebcal_hebrew[i]}, the ${hebcal_title[i]}"
-				speakMessage = "Tonight is the ${hebcal_title[i]}"
-				sendMessage(pushMessage,speakMessage)
+				speakMessage = "Tonight is the ${hebcal_title[i].split("day")[0]} night of the Ohhmer"
+				handleMessages(pushMessage,speakMessage)
 			}//END if(hebcal_category[i]=="omer")
 		}//END if(hebcal_date[i]==today)
 	}//END for (int i = 0; i < hebcal_date.size; i++)
@@ -169,8 +152,8 @@ httpGet(urlRequestOmer, hebcal);
 }//END def queryHebcal()
 
 
-def sendMessage(textmsg,speakmsg){
-	if (location.contactBookEnabled && recipients) {
+def handleMessages(textmsg,speakmsg){
+	if (location.contactBookEnabled && recipients !="") {
 		sendNotificationToContacts(textmsg, recipients)
 		log.debug "Contact Book enabled!"
 		log.debug "Message sent!"
@@ -183,42 +166,11 @@ def sendMessage(textmsg,speakmsg){
         	sendPush( textmsg )
 	}//END IF (sendPush)
 	if (speakers) { //check if speakers are available and selected
-    	log.debug "Speakers: $speakers enabled."
-		safeTextToSpeech(speakmsg)
-		if(ttsMode == "Alexa" && !message.contains("#s")) {
-                	speakers.playTrack(speakmsg.uri)
-            }else {
-            	speakers.playTrackAndResume(speakmsg.uri, speakmsg.duration, volume)
+    	if (speakerVolume) {
+        	speakers?.setLevel(speakerVolume)
             }
+    	log.debug "Speakers: ${speakers} enabled."
+        speakers?.speak(speakmsg)
 	}//END IF (speakers)	
-}//END def sendMessage(msg)
+}//END def handleMessages(textmsg,speakmsg)
 
-private safeTextToSpeech(message) {
-	log.debug "Encoding: '${message}' to speech"
-    switch(ttsMode){
-		case "Alexa":
-		log.debug "Alexa TTS Mode called"
-		[uri: "x-rincon-mp3radio://tts.freeoda.com/alexa.php/" + "?key=$alexaApiKey&text=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-" , duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
-		default:
-		try {
-            log.debug "Attempting default TTS method"
-            state.sound = textToSpeech(message,stLanguage.substring(6))
-		}
-		catch (Throwable t) {
-			log.error "Error in attempting default TTS method"
-			textToSpeechT(message)
-		}
-		break
-    }
-}
-
-private textToSpeechT(message){
-    if (message) {
-    	if (ttsApiKey){
-            [uri: "x-rincon-mp3radio://api.voicerss.org/" + "?key=$ttsApiKey&hl=en-us&r=0&f=48khz_16bit_mono&src=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-" , duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
-        }else{
-        	message = message.length() >100 ? message[0..90] :message
-        	[uri: "x-rincon-mp3radio://www.translate.google.com/translate_tts?tl=en&client=t&q=" + URLEncoder.encode(message, "UTF-8").replaceAll(/\+/,'%20') +"&sf=//s3.amazonaws.com/smartapp-", duration: "${5 + Math.max(Math.round(message.length()/12),2)}"]
-     	}
-    }
-}
