@@ -49,11 +49,11 @@ def mainPage() {
 		input "speakers", "capability.speechSynthesis", title: "On these speakers", multiple:true, required: false
         input "speakerVolume", "number", title: "Select reminder volume", description: "0-100%", required: false
 		}
-	section("More options", hideable: true, hidden: true) {
-		input "days", "enum", title: "Only announce on certain days of the week?", multiple: true, required: false,
-				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
-		}
+	//section("More options"){
+	//	label(name: "label", required: false, multiple: false)
+	//input "modes", "mode", title: "Only remind me when mode is", multiple: true, required: false
+    //mode(name: "modeMultiple", title: "Only remind me when mode is", multiple: true, required: false)
+	//}
 	}
 }
 		
@@ -106,11 +106,9 @@ def scheduleRemind(sunsetString) {
 }
 
 //Check hebcal for today's Omer count
-def poll()
-{
+def poll() {
 	Hebcal_WebRequest()
 }//END def poll()
-
 
 
 /**********************************************
