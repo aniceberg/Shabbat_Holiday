@@ -1,12 +1,12 @@
 definition(
     name: "Tamperproof Lighting",
-    namespace: "homeLit/automations",
+    namespace: "HomeLit/automations",
     author: "iceberg",
     description: "A simple app to create tamperproof lighting schedules. This is a child app.",
     category: "My Apps",
 
     // the parent option allows you to specify the parent app in the form <namespace>/<app name>
-    parent: "homeLit/parent:Tamperproof Lighting",
+    parent: "HomeLit/parent:Tamperproof Lighting",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")

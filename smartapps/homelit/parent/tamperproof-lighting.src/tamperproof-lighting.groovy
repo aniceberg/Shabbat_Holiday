@@ -17,7 +17,7 @@
 
 definition(
     name: "Tamperproof Lighting",
-    namespace: "homeLit/parent",
+    namespace: "HomeLit/parent",
     author: "iceberg",
     description: "Smart Lighting with Tamper Protection (Parent app)",
     category: "My Apps",
@@ -30,7 +30,7 @@ preferences {
     // The parent app preferences are pretty simple: just use the app input for the child app.
     page(name: "mainPage", title: "Tamperproof Lighting", install: true, uninstall: true,submitOnChange: true) {
         section {
-            app(name: "tamperproofLighting", appName: "Tamperproof Lighting", namespace: "homeLit/automations", title: "Create New Schedule", multiple: true)
+            app(name: "tamperproofLighting", appName: "Tamperproof Lighting", namespace: "HomeLit/automations", title: "Create New Schedule", multiple: true)
             }
     }
 }
