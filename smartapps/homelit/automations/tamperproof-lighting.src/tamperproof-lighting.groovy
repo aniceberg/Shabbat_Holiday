@@ -37,15 +37,15 @@ def initialize() {
     // schedule the turn on and turn off handlers
     schedule(scheduleStartTime, startHandler)
     schedule(scheduleEndTime, endHandler)
-    schedule(lights, "lights.on", lightOn)
-	schedule(lights, "lights.off", lightOff)
+    schedule(switches, "switches.on", switchesOn)
+	schedule(switches, "switches.off", switchesOff)
 }
 
 // main page to select lights, the action, and turn on/off times
 def mainPage() {
     dynamicPage(name: "mainPage") {
         section {
-            lightInputs()
+            switchInputs()
             actionInputs()
         	timeInputs()
             tamperProtection()
@@ -75,20 +75,20 @@ def namePage() {
             }
         }
         section {
-            input "overrideLabel", "bool", title: "Edit automation name", defaultValue: "false", required: "false", submitOnChange: true
+            input "overrideLabel", "bool", title: "Edit automation name", defaultValue: false, required: false, submitOnChange: true
         }
     }
 }
 
-// inputs to select the lights
-def lightInputs() {
-    input "lights", "capability.switch", title: "Which switches do you want to control?", multiple: true, submitOnChange: true
+// inputs to select the lights switches
+def switchInputs() {
+    input "switches", "capability.switch", title: "Which switch do you want to control?", multiple: false, submitOnChange: true
 }
 
 // inputs to control what to do with the lights (turn on/keep on, turn off/keep off)
 def actionInputs() {
-    if (lights) {
-    	input "action", "enum", title: "What do you want to do?", options: ["off":"Turn off", "on":"Turn on"], required: true, submitOnChange: true
+    if (switches) {
+    	input "desiredAction", "enum", title: "What do you want to do?", options: ["off":"Turn off", "on":"Turn on"], required: true, submitOnChange: true
     }
 }
 
@@ -99,30 +99,27 @@ def timeInputs() {
 	    	href "timeSetPage", title: "When do you want to schedule the switches?"
         }      
 	}
-    def scheduleStartTime = "toggleStartTime"
-    def scheduleEndTime = "toggleEndTime"
-    
 }
 
 // page for selecting automation triggers
 def timeSetPage() {
 	dynamicPage(name: "timeSetPage") {
     	section ("By time") {
-            input "timeStartOptions", "enum", title: "When to schedule switch ${action}?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time"], submitOnChange: true
+            input "timeStartOptions", "enum", title: "When to schedule switch ${desiredAction}?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time"], submitOnChange: true
                 if (timeStartOptions == "manualTime") {
-                    input "toggleStartTime", "time", title: "Time to toggle switch ${action}", required: true
+                    input "toggleStartTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
                 } else {
                 	section("Location") {
     					input "autoLocation", "bool", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
-        				if (autoLocation=="false") {
+        				if (autoLocation== false) {
 				        	input"locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
        					}
     				}
                 	input "sOffsetStartTime", "number", title: "+/- minutes from ${timeStartOptions}. (e.g. Enter '-30' for half hour before ${timeStartOptions})", defaultValue: "0", range: "-719..719", required = false
                 }
-			input "timeEndOptions", "enum", title: "When to end ${action} schedule?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time"], submitOnChange: true
+			input "timeEndOptions", "enum", title: "When to end ${desiredAction} schedule?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time"], submitOnChange: true
             	if (timeEndOptions == "manualTime") {
-                    input "toggleEndTime", "time", title: "Time to toggle switch ${action}", required: true
+                    input "toggleEndTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
                 } else {
                 	input "sOffsetEndTime", "number", title: "Optional: Choose +/- minutes from ${timeEndOptions}. (e.g. Enter '-30' for half hour before ${timeEndOptions})", defaultValue: "0", range: "-719..719", required: true
                 }
@@ -136,66 +133,86 @@ def timeSetPage() {
 
 def tamperProtection() {
 	section ("Tamper Protection") {
-    	input "tamperProtection", "bool", title: "Prevent switches from being toggled during schedule?",  defaultValue: "false", required: "false", submitOnChange: true
-        if (tamperProtection) {
+    	input "tamperProtectionOption", "bool", title: "Prevent switches from being toggled during schedule?",  defaultValue: false, required: false, submitOnChange: true
+        if (tamperProtectionOption) {
            	input "desiredState", "enum", title: "Keep switches turned...", multiple: false, options: ["on":"on", "off":"off"], required: true, submitOnChange: true
-           	if (lights.find{it.hasCommand('tapUp2')} != null) {
-        		switchOverrides()
-           	}
+           	input "delayTime", "number", title: "Optional: Delay time in minutes before turning switch back ${desiredState}. (e.g. 1 or 5 minutes; default is 0 minutes.)",
+            	range: "0..719", defaultValue: "0", required: false
+			delayTime = delayTime * 1000 * 60
+            //if (switches.find{it.hasCommand('tapUp2')} != null) {
+        	//	def switchOverrideEnabled = null
+            //    switchOverrides()
+            //    if (switchOverrideCmd.value != false) {
+            //    	switchOverrideEnabled = true
+            //    }
+           	//}
    		}
 	}
 }
 
 def switchOverrides() {
-	input "switchOverrideCmd", "enum", title: "Override tamper protection with double, triple or long hold?", 
-	options: ["false":"No", "tapUp2":"Double-Tap Up", "tapDown2":"Double-Tap Down", "tapUp3":"Triple-Tap Up", "tapDown3":"Triple-Tap Down", "holdUp":"Hold Up", "holdDown":"Hold Down"],
-    multiple: false, defaultValue: "No", required: false
+	input "switchOverrideCmd", "enum", title: "Override tamper protection with double/triple-tap or long hold?", 
+		options: ["false":"No", "tapUp2":"Double-Tap Up", "tapDown2":"Double-Tap Down", "tapUp3":"Triple-Tap Up", "tapDown3":"Triple-Tap Down", "holdUp":"Hold Up", "holdDown":"Hold Down"],
+		multiple: false, defaultValue: "No", required: false
 }
 
 def motionOverrides() {
 	section ("Motion Detection Rules") {
-        input "motion", "capability.motionSensor", title: "Which motion sensors should be checked for activity?", multiple: true, required: "false"
+        input "motion", "capability.motionSensor", title: "Which motion sensors should be checked for activity?", multiple: true, required: false
     }
 }
 
-// the handler method that turns and keeps the lights ON 
+// the handler method that turns and keeps the lights either ON or OFF 
 def startHandler() {
     // switch on the selected action
-    switch(action) {
+    switch(desiredAction) {
         case "on":
-            log.debug "on()"
-            lights.on()
+            log.debug "Starting $switches ON schedule and turning switches ON"
+            switches.on()
             break
 		case "off":
-            log.debug "off()"
-            lights.off()
+            log.debug "Starting $switches OFF schedule and turning switches OFF"
+            switches.off()
             break
         }
+	def scheduledRun = true
 }
 
-// the handler method that turns and keeps the lights OFF 
+// the handler method when the lighting schedule is finished
 def endHandler() {
-	switch(action) {
+	switch(desiredAction) {
         case "on":
-            log.debug "End on() Schedule"
-            lights.on()
+            log.debug "Ending $switches ON schedule and turning switches OFF"
+            switches.off()
             break
 		case "off":
-            log.debug "End off() Schedule"
-            lights.off()
+            log.debug "Ending $switches OFF schedule and leaving switches OFF"
+            //switches.off()
             break
 	}
+    scheduledRun = null
 }
 
-def lightOn(evt) {
-  log.trace "lightOn($evt.name: $evt.value)"
-  def delay = (openThreshold != null && openThreshold != "") ? openThreshold * 60 : 600
-  runIn(delay, doorOpenTooLong, [overwrite: true])
+def switchesOn(evt) {
+	log.trace "switchesOn($evt.name: $evt.value)"
+	if (scheduledRun && desiredState == "off") {
+		//Checks if either no override allowed or if override command matches the event receieved
+		log.debug "Overide is '$switchOverrideEnabled'. Allowed override button is '$switchOverrideCmd'."
+		//if (!switchOverrideEnabled || switchOverrideCmd == evt.value) { 
+    	runIn(delayTime, switches.off())
+    //}
+  }
 }
 
-def lightOff(evt) {
-  log.trace "lightOff($evt.name: $evt.value)"
-  unschedule(doorOpenTooLong)
+def switchesOff(evt) {
+	log.trace "switchesOff($evt.name: $evt.value)"
+	if (scheduledRun && desiredState == "on") {
+		//Checks if either no override allowed or if override command matches the event receieved
+        log.debug "Overide is '$switchOverrideEnabled'. Allowed override button is '$switchOverrideCmd'."
+  		//if (!switchOverrideEnabled || switchOverrideEnabled == evt.value) {
+    	runIn(delayTime, switches.on())
+    //}
+  }
 }
 
 
@@ -205,17 +222,17 @@ def lightOff(evt) {
 // a method that will set the default label of the automation.
 // It uses the lights selected and action to create the automation label
 def defaultLabel() {
-    def lightsLabel = settings.lights.size() == 1 ? lights[0].displayName : lights[0].displayName + ", etc..."
-        "Turn $action $lightsLabel"
+    def switchesLabel = settings.switches.size() == 1 ? switches[0].displayName : switches[0].displayName + ", etc..."
+        "Turn $desiredAction $switchesLabel"
 }
 
 // utility method to get a map of available actions for the selected switches
 def actionMap() {
     def map = [on: "Turn On", off: "Turn Off"]
-    if (lights.find{it.hasCommand('setLevel')} != null) {
+    if (switches.find{it.hasCommand('setLevel')} != null) {
         map.level = "Turn On & Set Level"
     }
-    if (lights.find{it.hasCommand('setColor')} != null) {
+    if (switches.find{it.hasCommand('setColor')} != null) {
         map.color = "Turn On & Set Color"
     }
     map
@@ -275,7 +292,7 @@ def setColor() {
     def value = [switch: "on", hue: hueColor, saturation: saturation, level: level as Integer ?: 100]
     log.debug "color = $value"
 
-    lights.each {
+    switches.each {
         if (it.hasCommand('setColor')) {
             log.debug "$it.displayName, setColor($value)"
             it.setColor(value)
