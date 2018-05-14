@@ -37,6 +37,8 @@ def initialize() {
     // schedule the turn on and turn off handlers
     schedule(scheduleStartTime, startHandler)
     schedule(scheduleEndTime, endHandler)
+    schedule(lights, "lights.on", lightOn)
+	schedule(lights, "lights.off", lightOff)
 }
 
 // main page to select lights, the action, and turn on/off times
@@ -136,7 +138,7 @@ def tamperProtection() {
 	section ("Tamper Protection") {
     	input "tamperProtection", "bool", title: "Prevent switches from being toggled during schedule?",  defaultValue: "false", required: "false", submitOnChange: true
         if (tamperProtection) {
-           	input "desiredState", "enum", title: "Prevent switches from being...", multiple: false, options: ["off":"turned off", "on":"turned on"], required: true, submitOnChange: true
+           	input "desiredState", "enum", title: "Keep switches turned...", multiple: false, options: ["on":"on", "off":"off"], required: true, submitOnChange: true
            	if (lights.find{it.hasCommand('tapUp2')} != null) {
         		switchOverrides()
            	}
@@ -146,7 +148,8 @@ def tamperProtection() {
 
 def switchOverrides() {
 	input "switchOverrideCmd", "enum", title: "Override tamper protection with double, triple or long hold?", 
-	options: ["false":"No", "tapUp2":"Double-Tap Up", "tapDown2":"Double-Tap Down", "tapUp3":"Triple-Tap Up", "tapDown3":"Triple-Tap Down", "holdUp":"Hold Up", "holdDown":"Hold Down"],  defaultValue: "No", required: false
+	options: ["false":"No", "tapUp2":"Double-Tap Up", "tapDown2":"Double-Tap Down", "tapUp3":"Triple-Tap Up", "tapDown3":"Triple-Tap Down", "holdUp":"Hold Up", "holdDown":"Hold Down"],
+    multiple: false, defaultValue: "No", required: false
 }
 
 def motionOverrides() {
@@ -183,6 +186,21 @@ def endHandler() {
             break
 	}
 }
+
+def lightOn(evt) {
+  log.trace "lightOn($evt.name: $evt.value)"
+  def delay = (openThreshold != null && openThreshold != "") ? openThreshold * 60 : 600
+  runIn(delay, doorOpenTooLong, [overwrite: true])
+}
+
+def lightOff(evt) {
+  log.trace "lightOff($evt.name: $evt.value)"
+  unschedule(doorOpenTooLong)
+}
+
+
+
+
 
 // a method that will set the default label of the automation.
 // It uses the lights selected and action to create the automation label
