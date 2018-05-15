@@ -15,7 +15,8 @@ definition(
 preferences {
     page name: "mainPage", title: "Automate Lights & Switches", install: false, uninstall: true, nextPage: "namePage"
     page name: "namePage", title: "Automate Lights & Switches", install: true, uninstall: true
-    page name: "timeSetPage", title: "How to trigger the switch"
+    page name: "timeSetPage", title: "When to begin schedule"
+    page name: "timeEndPage", title: "When to end scheduling"
 }
 
 def installed() {
@@ -26,6 +27,7 @@ def installed() {
 def updated() {
     log.debug "Updated with settings: ${settings}"
     unschedule()
+    unsubscribe()
     initialize()
 }
 
@@ -34,11 +36,12 @@ def initialize() {
     if (!overrideLabel) {
         app.updateLabel(defaultLabel())
     }
+  
     // schedule the turn on and turn off handlers
-    schedule(scheduleStartTime, startHandler)
-    schedule(scheduleEndTime, endHandler)
-    schedule(switches, "switches.on", switchesOn)
-	schedule(switches, "switches.off", switchesOff)
+    schedule(toggleStartTime, startHandler)
+    schedule(toggleEndTime, endHandler)
+    subscribe(switches, "switches.on", switchesOn)
+	subscribe(switches, "switches.off", switchesOff)
 }
 
 // main page to select lights, the action, and turn on/off times
@@ -95,41 +98,55 @@ def actionInputs() {
 // inputs for selecting on and off time
 def timeInputs() {
     if (settings.action) {
-    	section {
-	    	href "timeSetPage", title: "When do you want to schedule the switches?"
-        }      
+    	section ("Select time or mode for scheduling") {
+        	input "startOptions", "enum", title: "When to schedule switch ${desiredAction}?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time", "modeBased":"When mode changes"], submitOnChange: true
+	    	if (startOptions != "modeBased") {
+            	href "timeSetPage"
+        	} else if (settings.modes) {
+            	input "modes", "mode", title: "Only when mode is", multiple: true, required: false
+            }
+        }
+        section ("Select time or mode to end scheduling") {
+			input "endOptions", "enum", title: "When to end ${desiredAction} schedule?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time", "modeBased":"When mode changes"], submitOnChange: true
+			if (startOptions != "modeBased") {
+            	href "timeEndPage"
+			} else if (settings.modes) {
+            	input "modes", "mode", title: "Only when mode is", multiple: true, required: false
+            }
+		}
 	}
 }
 
 // page for selecting automation triggers
 def timeSetPage() {
 	dynamicPage(name: "timeSetPage") {
-    	section ("By time") {
-            input "timeStartOptions", "enum", title: "When to schedule switch ${desiredAction}?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time"], submitOnChange: true
-                if (timeStartOptions == "manualTime") {
-                    input "toggleStartTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
-                } else {
-                	section("Location") {
-    					input "autoLocation", "bool", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
-        				if (autoLocation== false) {
-				        	input"locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
-       					}
-    				}
-                	input "sOffsetStartTime", "number", title: "+/- minutes from ${timeStartOptions}. (e.g. Enter '-30' for half hour before ${timeStartOptions})", defaultValue: "0", range: "-719..719", required = false
-                }
-			input "timeEndOptions", "enum", title: "When to end ${desiredAction} schedule?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time"], submitOnChange: true
-            	if (timeEndOptions == "manualTime") {
-                    input "toggleEndTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
-                } else {
-                	input "sOffsetEndTime", "number", title: "Optional: Choose +/- minutes from ${timeEndOptions}. (e.g. Enter '-30' for half hour before ${timeEndOptions})", defaultValue: "0", range: "-719..719", required: true
-                }
-			}
-	
-		section ("By specific mode") {
-			input "modes", "mode", title: "Only when mode is", multiple: true, required: false, submitOnChange: true
-    	}
+    	section ("Select time to begin scheduling") {
+ 			if (startOptions == "manualTime") {
+            	input "toggleStartTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
+            } else { 
+				input "sOffsetStartTime", "number", title: "Optional: +/- minutes from ${startOptions.value}. (e.g. Enter '-30' for half hour before ${startOptions.value})", defaultValue: "0", range: "-719..719", required = false
+				//subscribe(location, "${startOptions.value}")
+                //def toggleStartTime = getSunriseAndSunset([startOptions.value]Offset: +sOffsetStartTime)
+                }  
+		}
+    }
+}
+
+def timeEndPage() {
+	dynamicPage(name: "timeEndPage") {        
+        section ("Select time to end scheduling") {			
+            if (endOptions == "manualTime") {
+            	input "toggleEndTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
+            } else {
+    			input "sOffsetEndTime", "number", title: "Optional: Choose +/- minutes from ${endOptions.value}. (e.g. Enter '-30' for half hour before ${endOptions.value})", defaultValue: "0", range: "-719..719", required: true
+            	//def toggleEndTime = getSunriseAndSunset(location, {endOptions.value}Offset: +sOffsetEndTime)
+            }
+		}
+		//def endS = getSunriseAndSunset(zipCode: locationZIP, sunriseOffset: +sOffsetStartTime, sunsetOffset: +sOffsetStartTime)
+    	//log.debug "Manual schedule for ${locationZIP} local sunrise is ${s.sunrise}, sunset is ${s.sunset}."
 	}
 }
+
 
 def tamperProtection() {
 	section ("Tamper Protection") {
@@ -169,11 +186,11 @@ def startHandler() {
         case "on":
             log.debug "Starting $switches ON schedule and turning switches ON"
             switches.on()
-            break
+            break;
 		case "off":
             log.debug "Starting $switches OFF schedule and turning switches OFF"
             switches.off()
-            break
+            break;
         }
 	def scheduledRun = true
 }
@@ -184,11 +201,11 @@ def endHandler() {
         case "on":
             log.debug "Ending $switches ON schedule and turning switches OFF"
             switches.off()
-            break
+            break;
 		case "off":
             log.debug "Ending $switches OFF schedule and leaving switches OFF"
             //switches.off()
-            break
+            break;
 	}
     scheduledRun = null
 }
