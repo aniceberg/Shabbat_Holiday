@@ -103,15 +103,15 @@ def timeInputs() {
 	    	if (startOptions != "modeBased") {
             	href "timeSetPage"
         	} else if (settings.modes) {
-            	input "modes", "mode", title: "Only when mode is", multiple: true, required: false
+            	input "modes", "mode", title: "When mode changes to", multiple: true, required: false
             }
         }
-        section ("Select time or mode to end scheduling") {
+        section ("${desiredAction} until?") {
 			input "endOptions", "enum", title: "When to end ${desiredAction} schedule?", multiple: false, options: ["sunrise":"At sunrise", "sunset":"At sunset", "manualTime":"At a specified time", "modeBased":"When mode changes"], submitOnChange: true
 			if (startOptions != "modeBased") {
             	href "timeEndPage"
 			} else if (settings.modes) {
-            	input "modes", "mode", title: "Only when mode is", multiple: true, required: false
+            	input "modes", "mode", title: "When mode changes to", multiple: true, required: false
             }
 		}
 	}
@@ -124,12 +124,17 @@ def timeSetPage() {
  			if (startOptions == "manualTime") {
             	input "toggleStartTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
             } else { 
-				input "sOffsetStartTime", "number", title: "Optional: +/- minutes from ${startOptions.value}. (e.g. Enter '-30' for half hour before ${startOptions.value})", defaultValue: "0", range: "-719..719", required = false
-				//subscribe(location, "${startOptions.value}")
-                //def toggleStartTime = getSunriseAndSunset([startOptions.value]Offset: +sOffsetStartTime)
+				input "offsetStartTime", "number", title: "Optional: +/- minutes from ${startOptions.value}. (e.g. Enter '-30' for half hour before ${startOptions.value})", defaultValue: "0", range: "-719..719", required = false
+				def toggleStartTime = calcTimes(startOptions, offsetStartTime)
+                //subscribe(location, "${startOptions.value}")
+                //def toggleStartTime = getSunriseAndSunset([startOptions.value]Offset: +offsetStartTime)
                 }  
 		}
     }
+}
+
+def calcTimes(option, offset){
+//add code here!!!
 }
 
 def timeEndPage() {
@@ -138,12 +143,11 @@ def timeEndPage() {
             if (endOptions == "manualTime") {
             	input "toggleEndTime", "time", title: "Time to toggle switch ${desiredAction}", required: true
             } else {
-    			input "sOffsetEndTime", "number", title: "Optional: Choose +/- minutes from ${endOptions.value}. (e.g. Enter '-30' for half hour before ${endOptions.value})", defaultValue: "0", range: "-719..719", required: true
+    			input "offsetEndTime", "number", title: "Optional: Choose +/- minutes from ${endOptions.value}. (e.g. Enter '-30' for half hour before ${endOptions.value})", defaultValue: "0", range: "-719..719", required: false
             	//def toggleEndTime = getSunriseAndSunset(location, {endOptions.value}Offset: +sOffsetEndTime)
             }
 		}
-		//def endS = getSunriseAndSunset(zipCode: locationZIP, sunriseOffset: +sOffsetStartTime, sunsetOffset: +sOffsetStartTime)
-    	//log.debug "Manual schedule for ${locationZIP} local sunrise is ${s.sunrise}, sunset is ${s.sunset}."
+		//def endS = getSunriseAndSunset(zipCode: locationZIP, sunriseOffset: +sOffsetStartTime, sunsetOffset: +offsetEndTime)
 	}
 }
 
