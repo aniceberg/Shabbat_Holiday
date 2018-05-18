@@ -32,13 +32,9 @@ preferences {
 	}
     section("Options") {
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
-				options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
+				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+//		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
 	}
-	//section([mobileOnly:true]) {
-	//	label title: "Assign a name", required: false
-	//	mode title: "Set for specific mode(s)", required: false
-	//}
 }
 
 def installed() {
@@ -49,7 +45,7 @@ def installed() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
-    unschedule()
+	unschedule()
 	initialize()
 }
 
@@ -57,7 +53,6 @@ def initialize() {
 	// TODO: subscribe to attributes, devices, locations, etc.
     schedule(bedtime, startHandler) //TODO: check if we're currently in enforcement
     schedule(endBedtime, endHandler)
-    subscribe(switches, "switch.on", switchOn)
     if (modes) {
 		subscribe(location, modeChangeHandler)
 	}
@@ -66,33 +61,38 @@ def initialize() {
 // TODO: implement event handlers
 def startHandler() {
 	log.debug "Bedtime enforcement started at $bedtime."
-   	state.scheduledRun = true
+   	//state.scheduledRun = true
+	subscribe(switches, "switch.on", switchOn)
     switchOn(null)
 }
 
 def endHandler() {
 	log.debug "Bedtime enforcement ended at $endBedtime."
-    state.scheduledRun = false
+    //state.scheduledRun = false
+    unsubscribe()
 }
 
 def switchOn(event) {
-	log.debug "switchOn(), getAllOk: " + getAllOk()
-	if ( getAllOk() ) {
+	//log.debug "switchOn(), getAllOk: " + getAllOk()
+    log.debug "switchOn(), getDaysOk: " + getDaysOk()
+    //only need to check
+	if ( getDaysOk() ) {
     	log.debug "$switches turning off."
     	switches.off()
 	}
 }
 
-// TODO - centralize somehow
-def getAllOk() {
-	return (getModeOk && getDaysOk && state.scheduledRun)
-}
+// Commented out this section after eliminating "scheduledRun" variable and using Mobile App's native Mode Handling
+//def getAllOk() {
+//	return (getModeOk && getDaysOk && state.scheduledRun)
+//}
 
-def getModeOk() {
-	def result = !modes || modes.contains(location.mode)
-	log.debug "modeOk = $result"
-	return result
-}
+// Commented out this section because using Mobile App's native Mode Handling
+//def getModeOk() {
+//	def result = !modes || modes.contains(location.mode)
+//	log.debug "modeOk = $result"
+//	return result
+//}
 
 def getDaysOk() {
 	def result = true
