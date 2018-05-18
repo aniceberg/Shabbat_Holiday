@@ -55,9 +55,9 @@ def updated() {
 
 def initialize() {
 	// TODO: subscribe to attributes, devices, locations, etc.
-    schedule(bedtime, startHandler)
+    schedule(bedtime, startHandler) //TODO: check if we're currently in enforcement
     schedule(endBedtime, endHandler)
-    subscribe(switches, "switches.on", switchOn)
+    subscribe(switches, "switch.on", switchOn)
     if (modes) {
 		subscribe(location, modeChangeHandler)
 	}
@@ -66,17 +66,18 @@ def initialize() {
 // TODO: implement event handlers
 def startHandler() {
 	log.debug "Bedtime enforcement started at $bedtime."
-   	def scheduledRun = true
-    switchOn()
+   	state.scheduledRun = true
+    switchOn(null)
 }
 
 def endHandler() {
 	log.debug "Bedtime enforcement ended at $endBedtime."
-    scheduledRun = false
+    state.scheduledRun = false
 }
 
-def switchOn() {
-	if (getAllOk) {
+def switchOn(event) {
+	log.debug "switchOn(), getAllOk: " + getAllOk()
+	if ( getAllOk() ) {
     	log.debug "$switches turning off."
     	switches.off()
 	}
@@ -84,13 +85,13 @@ def switchOn() {
 
 // TODO - centralize somehow
 def getAllOk() {
-	getModeOk && getDaysOk && scheduledRun
+	return (getModeOk && getDaysOk && state.scheduledRun)
 }
 
 def getModeOk() {
 	def result = !modes || modes.contains(location.mode)
 	log.debug "modeOk = $result"
-	result
+	return result
 }
 
 def getDaysOk() {
@@ -107,5 +108,5 @@ def getDaysOk() {
 		result = days.contains(day)
 	}
 	log.debug "daysOk = $result"
-	result
+	return result
 }
