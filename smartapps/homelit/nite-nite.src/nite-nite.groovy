@@ -31,8 +31,10 @@ preferences {
 		input "switches", "capability.switch", title: "Which switch(es) do you want to control?", multiple: true
 	}
     section("Options") {
+    	input "delayTime", "number", title: "Delay shutoff time (defaults to 5 seconds)", defaultValue: "0",  range: "0..*", required: false
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+// Not needed because it's automatically implemented in the Mobile app? 
 //		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
 	}
 }
@@ -56,6 +58,8 @@ def initialize() {
     if (modes) {
 		subscribe(location, modeChangeHandler)
 	}
+	//initialize delayTime value to 5000ms unless another value was input
+    state.delayTime = delayTime * 1000 ?: 5000
 }
 
 // TODO: implement event handlers
@@ -75,10 +79,10 @@ def endHandler() {
 def switchOn(event) {
 	//log.debug "switchOn(), getAllOk: " + getAllOk()
     log.debug "switchOn(), getDaysOk: " + getDaysOk()
-    //only need to check
+    //only need to check the days, not the mode?
 	if ( getDaysOk() ) {
-    	log.debug "$switches turning off."
-    	switches.off()
+        log.debug "$switches turning off."
+    	runIn(delayTime, switches.off() )
 	}
 }
 
