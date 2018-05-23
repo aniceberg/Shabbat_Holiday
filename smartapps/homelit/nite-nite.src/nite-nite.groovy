@@ -31,7 +31,7 @@ preferences {
 		input "switches", "capability.switch", title: "Which switch(es) do you want to control?", multiple: true
 	}
     section("Options") {
-    	input "delayTime", "number", title: "Delay shutoff time (defaults to 5 seconds)", defaultValue: "0",  range: "0..*", required: false
+    	input "delayTime", "number", title: "Delay shutoff time (defaults to 5 seconds)", defaultValue: "5",  range: "5..*", required: false
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 // Not needed because it's automatically implemented in the Mobile app? 
@@ -55,9 +55,9 @@ def initialize() {
 	// TODO: subscribe to attributes, devices, locations, etc.
     schedule(bedtime, startHandler) //TODO: check if we're currently in enforcement
     schedule(endBedtime, endHandler)
-    if (modes) {
-		subscribe(location, modeChangeHandler)
-	}
+ //   if (modes) {
+//		subscribe(location, modeChangeHandler)
+//	}
 	//initialize delayTime value to 5000ms unless another value was input
     state.delayTime = delayTime * 1000 ?: 5000
 }
@@ -67,7 +67,7 @@ def startHandler() {
 	log.debug "Bedtime enforcement started at $bedtime."
    	//state.scheduledRun = true
 	subscribe(switches, "switch.on", switchOn)
-    switchOn(null)
+    runEvery5Minutes(switchOn(null))
 }
 
 def endHandler() {
