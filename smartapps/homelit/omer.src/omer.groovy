@@ -30,7 +30,7 @@ def mainPage() {
     	input "autoLocation", "bool", title: "Enable automatic detection:", defaultValue: true, submitOnChange: true
         
 	if (autoLocation=="false") {
-        	input"locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
+        	input "locationZIP", "number", title: "Enter zipcode:", required: true, defaultValue: "11223", range: "0..99999"
         }
     }
 	section("Remind me each day at:") {
@@ -72,7 +72,7 @@ def updated() {
 def initialize() {
     
 	if (offset>0){
-    	if (autoLocation=="true") {
+    	if (autoLocation) {
         subscribe(location, "sunsetTime", sunsetTimeHandler)
     	scheduleRemind(location.currentValue("sunsetTime"))
         } else {
