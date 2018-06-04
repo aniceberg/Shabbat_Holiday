@@ -19,23 +19,35 @@ definition(
     author: "iceberg",
     description: "Toggles lights off after bedtime and keeps them off",
     category: "My Apps",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
-
+    iconUrl: "http://cdn.device-icons.smartthings.com/Weather/weather4-icn.png",
+    iconX2Url: "http://cdn.device-icons.smartthings.com/Weather/weather4-icn@2x.png",
+    iconX3Url: "http://cdn.device-icons.smartthings.com/Weather/weather4-icn@2x.png")
 
 preferences {
-	section("Bedtime") {
-		input "bedtime", "time", title: "Choose a bedtime:", required: true
-        input "endBedtime", "time", title: "When to end bedtime rules:", required: true
+	page(name: "mainPage", install: true, uninstall: true)	
+}
+
+def mainPage() {
+	dynamicPage(name: "mainPage") {
+	section("Bedtime", hideWhenEmpty: true) {
 		input "switches", "capability.switch", title: "Which switch(es) do you want to control?", multiple: true
+        input "bedtime", "time", title: "Choose a bedtime:", required: true, hideWhenEmpty: "switches"
+        input "endBedtime", "time", title: "When to end bedtime rule enforcement:", required: true, hideWhenEmpty: "switches"
 	}
+    
+    section("Bedtime message announcement", hideWhenEmpty: true) {
+			input "speakers", "capability.speechSynthesis", title: "On these speakers", multiple:true, required: false
+			input "speakerVolume", "number", title: "Select reminder volume", description: "0-100%", required: false, hideWhenEmpty: "speakers"
+    		input "bedtimeMessage", "text", title: "Bedtime message to announce", defaultValue: "Time for bed!", required: false, hideWhenEmpty: "speakers"
+            input "enforcementMessage", "text", title: "Enforcement message to announce. (can be left blank to disable)", defaultValue: "Turning off ${switches} in ${delayTime} seconds", required: false, hideWhenEmpty: "speakers"
+        }
+    
     section("Options") {
-    	input "delayTime", "number", title: "Delay shutoff time (defaults to 5 seconds)", defaultValue: "5",  range: "5..*", required: false
+    	input "delayTime", "number", title: "Delay shutoff time (defaults to 60 second minimum)", defaultValue: "60",  range: "60..*", required: false
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-// Not needed because it's automatically implemented in the Mobile app? 
-//		input "modes", "mode", title: "Only when mode is", multiple: true, required: false
+		input "modes", "mode", title: "Only in these modes", multiple: true, required: false                
+		}
 	}
 }
 
@@ -52,51 +64,56 @@ def updated() {
 }
 
 def initialize() {
-	// TODO: subscribe to attributes, devices, locations, etc.
-    schedule(bedtime, startHandler) //TODO: check if we're currently in enforcement
+    schedule(bedtime, startHandler)
     schedule(endBedtime, endHandler)
- //   if (modes) {
-//		subscribe(location, modeChangeHandler)
-//	}
-	//initialize delayTime value to 5000ms unless another value was input
-    state.delayTime = delayTime * 1000 ?: 5000
+	//initialize delayTimeMS value to 60000ms unless another value was input
+    state.delayTimeMS = (delayTime * 1000) ?: 60000
+    log.debug "delayTimeMS = $state.delayTimeMS"
 }
 
-// TODO: implement event handlers
 def startHandler() {
-	log.debug "Bedtime enforcement started at $bedtime."
-   	//state.scheduledRun = true
-	subscribe(switches, "switch.on", switchOn)
-    runEvery5Minutes(switchOn(null))
+	log.debug "getDaysOk: " + getDaysOk()
+	if ( getDaysOk() ) { //&& getModeOk() ) {
+       	log.debug "Bedtime enforcement started at ${bedtime}."
+    
+    	//check for speakers and message
+   		if (speakers && bedtimeMessage) { deliverMessage(bedtimeMessage) }
+        
+        //turn off switches
+		switches.off()
+        
+    	//watch for switch turned on
+    	subscribe(switches, "switch.on", switchOn)
+            
+    	//In case the event is missed, automatically check every 10 minutes to turn off lights
+    	runEvery10Minutes(switchOn(null))
+        }
 }
 
 def endHandler() {
-	log.debug "Bedtime enforcement ended at $endBedtime."
-    //state.scheduledRun = false
+	log.debug "Bedtime enforcement ended at ${endBedtime}."
     unsubscribe()
+    unschedule()
 }
 
 def switchOn(event) {
-	//log.debug "switchOn(), getAllOk: " + getAllOk()
-    log.debug "switchOn(), getDaysOk: " + getDaysOk()
-    //only need to check the days, not the mode?
-	if ( getDaysOk() ) {
-        log.debug "$switches turning off."
-    	runIn(delayTime, switches.off() )
-	}
+	//Log the state of the switches
+	log.debug "${switches} are ${state.switches}."
+    
+    //check switch status before sending OFF command
+    if (switches=="on") {
+    	runIn(state.delayTimeMS, switches.off() )
+        log.debug "$switches turning off in ${state.delayTimeMS}."
+    	if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
+        }
 }
 
-// Commented out this section after eliminating "scheduledRun" variable and using Mobile App's native Mode Handling
-//def getAllOk() {
-//	return (getModeOk && getDaysOk && state.scheduledRun)
-//}
+def deliverMessage(msg) {
+	if (speakerVolume) { speakers?.setLevel(speakerVolume) }
+    log.debug "Speakers: ${speakers} enabled."
+    speakers?.speak(msg)
+}
 
-// Commented out this section because using Mobile App's native Mode Handling
-//def getModeOk() {
-//	def result = !modes || modes.contains(location.mode)
-//	log.debug "modeOk = $result"
-//	return result
-//}
 
 def getDaysOk() {
 	def result = true
@@ -111,6 +128,13 @@ def getDaysOk() {
 		def day = df.format(new Date())
 		result = days.contains(day)
 	}
-	log.debug "daysOk = $result"
+	log.debug "daysOk = ${result}"
 	return result
+}
+
+def getModeOk() {
+	def result = true
+    //add Mode checking code
+	if (mode) { }
+    return result
 }
