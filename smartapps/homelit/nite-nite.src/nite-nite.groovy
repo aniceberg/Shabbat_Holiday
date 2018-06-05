@@ -99,10 +99,10 @@ def endHandler() {
 
 def switchOn(event) {
 	//Log the state of the switches
-    log.debug "${switches} are ${switches.switch}"
+    log.debug "${switches} are ${switches.switchState}"
     
     //check switch status before sending OFF command
-    if (switches.switch=="on") {
+    if (switches.switchState=="on") {
     	runIn(state.delayTimeMS, switches.off() )
         log.debug "$switches turning off in ${state.delayTimeMS}."
     	if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
