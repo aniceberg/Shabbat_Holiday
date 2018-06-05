@@ -46,7 +46,7 @@ def mainPage() {
     	input "delayTime", "number", title: "Delay shutoff time (defaults to 60 second minimum)", defaultValue: "60",  range: "60..*", required: false
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-		input "modes", "mode", title: "Only in these modes", multiple: true, required: false                
+		input "modes", "mode", title: "Set for specific modes", multiple: true, required: false                
 		}
 	}
 }
@@ -80,8 +80,8 @@ def startHandler() {
    		if (speakers && bedtimeMessage) { deliverMessage(bedtimeMessage) }
         
         //turn off switches
-		//switches.off()
-        switchOn(null)
+		switches.off()
+        //switchOn()
         
     	//watch for switch turned on
     	subscribe(switches, "switch.on", switchOn)
@@ -99,10 +99,11 @@ def endHandler() {
 
 def switchOn(event) {
 	//Log the state of the switches
-    log.debug "${switches} are ${switches.switchState}"
+    log.debug "${switches} are ${state.switches.currentValue.contains}"
     
     //check switch status before sending OFF command
-    if (switches.switchState=="on") {
+    if (switches*.currentValue('switch').contains('on')) {
+    //if (switches.switchState=="on") {
     	runIn(state.delayTimeMS, switches.off() )
         log.debug "$switches turning off in ${state.delayTimeMS}."
     	if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
