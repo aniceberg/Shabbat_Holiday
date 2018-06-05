@@ -68,7 +68,7 @@ def initialize() {
     schedule(endBedtime, endHandler)
 	//initialize delayTimeMS value to 60000ms unless another value was input
     state.delayTimeMS = (delayTime * 1000) ?: 60000
-    log.debug "delayTimeMS = $state.delayTimeMS"
+    log.debug "delayTimeMS = ${state.delayTimeMS}"
 }
 
 def startHandler() {
@@ -80,7 +80,8 @@ def startHandler() {
    		if (speakers && bedtimeMessage) { deliverMessage(bedtimeMessage) }
         
         //turn off switches
-		switches.off()
+		//switches.off()
+        switchOn(null)
         
     	//watch for switch turned on
     	subscribe(switches, "switch.on", switchOn)
@@ -98,10 +99,10 @@ def endHandler() {
 
 def switchOn(event) {
 	//Log the state of the switches
-	log.debug "${switches} are ${state.switches}."
+    log.debug "${switches} are ${switches.switch}"
     
     //check switch status before sending OFF command
-    if (switches=="on") {
+    if (switches.switch=="on") {
     	runIn(state.delayTimeMS, switches.off() )
         log.debug "$switches turning off in ${state.delayTimeMS}."
     	if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
