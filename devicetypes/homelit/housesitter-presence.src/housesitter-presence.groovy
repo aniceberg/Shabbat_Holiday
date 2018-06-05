@@ -28,8 +28,8 @@ metadata {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
         standardTile("button", "device.switch", width: 1, height: 1) {
-			state "off", label: 'OFF', action: "switch.on", icon: "st.Kids.kid10", backgroundColor: "#ffffff", nextState: "on"
-			state "on", label: 'ON', action: "switch.off", icon: "st.Kids.kid10", backgroundColor: "#53a7c0", nextState: "off"
+			state "off", label: 'INACTIVE', action: "switch.on", icon: "st.Kids.kid10", backgroundColor: "#ffffff", nextState: "on"
+			state "on", label: 'PRESENT', action: "switch.off", icon: "st.Kids.kid10", backgroundColor: "#53a7c0", nextState: "off"
 		}
 
 		main (["presence", "button"])
