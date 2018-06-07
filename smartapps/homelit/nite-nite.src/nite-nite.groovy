@@ -80,8 +80,8 @@ def startHandler() {
    		if (speakers && bedtimeMessage) { deliverMessage(bedtimeMessage) }
         
         //turn off switches
-		switches.off()
-        //switchOn()
+		//switches.off()
+        switchOn(now)
         
     	//watch for switch turned on
     	subscribe(switches, "switch.on", switchOn)
@@ -99,15 +99,29 @@ def endHandler() {
 
 def switchOn(event) {
 	//Log the state of the switches
-    log.debug "${switches} are ${state.switches.currentValue.contains}"
+	log.debug "${switches} are ${switches.currentValue('switch')}"
     
     //check switch status before sending OFF command
-    if (switches*.currentValue('switch').contains('on')) {
-    //if (switches.switchState=="on") {
-    	runIn(state.delayTimeMS, switches.off() )
-        log.debug "$switches turning off in ${state.delayTimeMS}."
-    	if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
-        }
+    switches.each {
+		if ( it.currentState('switch').value.equals('on') ) {
+			log.debug "The following switch is on: " + it
+			if (event.value.equals('now')) { 
+            	log.debug "SwitchOn(now) event received"
+                turnOffAllSwitches() 
+            } else {
+            	runIn(state.delayTimeMS, turnOffAllSwitches) 
+            }
+        	log.debug it + " turning off in " + state.delayTimeMS + "ms."
+    		if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
+        	}
+		if ( it.currentState('switch').value.equals('off') ) {
+			log.debug "The following switch is off: " + it
+			}
+		}
+}
+
+def turnOffAllSwitches() { 
+	switches.off()
 }
 
 def deliverMessage(msg) {
