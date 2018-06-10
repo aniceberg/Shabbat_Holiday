@@ -72,16 +72,15 @@ def initialize() {
 }
 
 def startHandler() {
-	log.debug "getDaysOk: " + getDaysOk()
-	if ( getDaysOk() ) { //&& getModeOk() ) {
+	if ( getAllOk() ) {
        	log.debug "Bedtime enforcement started at ${bedtime}."
     
     	//check for speakers and message
    		if (speakers && bedtimeMessage) { deliverMessage(bedtimeMessage) }
         
         //turn off switches
-		//switches.off()
-        switchOn(now)
+		switches.off()
+        //switchOn(now)
         
     	//watch for switch turned on
     	subscribe(switches, "switch.on", switchOn)
@@ -105,13 +104,14 @@ def switchOn(event) {
     switches.each {
 		if ( it.currentState('switch').value.equals('on') ) {
 			log.debug "The following switch is on: " + it
-			if (event.value.equals('now')) { 
+			if (event) { 
             	log.debug "SwitchOn(now) event received"
-                turnOffAllSwitches() 
+                switches.off() 
             } else {
+            	log.debug "SwitchOn(now) event was NOT received"
             	runIn(state.delayTimeMS, turnOffAllSwitches) 
             }
-        	log.debug it + " turning off in " + state.delayTimeMS + "ms."
+        	//log.debug it + " turning off in " + state.delayTimeMS + "ms."
     		if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
         	}
 		if ( it.currentState('switch').value.equals('off') ) {
@@ -121,7 +121,8 @@ def switchOn(event) {
 }
 
 def turnOffAllSwitches() { 
-	switches.off()
+	log.debug "turnOffAllSwitches() method was called"
+    switches.off()
 }
 
 def deliverMessage(msg) {
@@ -130,6 +131,15 @@ def deliverMessage(msg) {
     speakers?.speak(msg)
 }
 
+private getAllOk() {
+	modeOk && daysOk
+}
+
+private getModeOk() {
+	def result = !modes || modes.contains(location.mode)
+	log.trace "modeOk = $result"
+	result
+}
 
 def getDaysOk() {
 	def result = true
@@ -146,11 +156,4 @@ def getDaysOk() {
 	}
 	log.debug "daysOk = ${result}"
 	return result
-}
-
-def getModeOk() {
-	def result = true
-    //add Mode checking code
-	if (mode) { }
-    return result
 }
