@@ -46,7 +46,8 @@ def mainPage() {
     	input "delayTime", "number", title: "Delay shutoff time (defaults to 60 second minimum)", defaultValue: "60",  range: "60..*", required: false
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-		input "modes", "mode", title: "Set for specific modes", multiple: true, required: false                
+		input "modes", "mode", title: "Set for specific modes", multiple: true, required: false
+        label(name: "label", required: false, multiple: false)
 		}
 	}
 }
