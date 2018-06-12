@@ -80,7 +80,7 @@ def startHandler() {
    		if (bedtimeMessage) { composeNotification(true, null)}        
         
         //check for, queue enforcement message and turn off switches
-        switchOn(null)
+        switchOn()
         
         //deliver Bedtime and/or Enforcement Message
         if (state.notificationMessage) { deliverMessage(state.notificationMessage) }
@@ -90,19 +90,17 @@ def startHandler() {
             
     	//In case the event is missed, automatically check every 10 minutes to turn off lights
     	runEvery10Minutes(switchOn(null))
-        }
+	}
 }
 
 def endHandler() {
 	log.debug "Bedtime enforcement ended at ${endBedtime}."
-    state.notificationMessage = null
-    unsubscribe()
-    unschedule()
+    updated()
 }
 
-def switchOn(event) {
+def switchOn() {
 	//Log the state of the switches
-	log.debug "${switches} are ${switches.currentValue('switch')}"
+	//log.debug "${switches} are ${switches.currentValue('switch')}"
     
     //check switch status before sending OFF command
     switches.each {
@@ -111,7 +109,7 @@ def switchOn(event) {
 			runIn(state.delayTime, turnOffAllSwitches)
         	}
 		if ( it.currentState('switch').value.equals('off') ) {
-			log.debug "The following switch is off: ${it}"
+			//log.debug "The following switch is off: ${it}"
 			}
 		}
 }
@@ -122,9 +120,7 @@ def turnOffAllSwitches() {
 
 def composeNotification(bedtimeMessageFlag=null, switchName=null) {
 	if (bedtimeMessageFlag) { state.notificationMessage = "${bedtimeMessage}" }   
-    if (switchName) { 
-        state.notificationMessage = "${state.notificationMessage} Turning off ${switchName} in ${state.delayTime} seconds!"
-        }
+    if (switchName) { state.notificationMessage = "${state.notificationMessage} Turning off ${switchName} in ${state.delayTime} seconds!" }
 }
 
 def deliverMessage(msg) {
@@ -138,7 +134,7 @@ private getAllOk() {
 
 private getModeOk() {
 	def result = !modes || modes.contains(location.mode)
-	log.trace "modeOk = $result"
+	//log.trace "modeOk = $result"
 	result
 }
 
@@ -155,6 +151,6 @@ def getDaysOk() {
 		def day = df.format(new Date())
 		result = days.contains(day)
 	}
-	log.debug "daysOk = ${result}"
+	//log.debug "daysOk = ${result}"
 	return result
 }
