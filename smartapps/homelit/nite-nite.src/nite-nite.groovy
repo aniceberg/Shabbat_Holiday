@@ -39,11 +39,11 @@ def mainPage() {
 			input "speakers", "capability.speechSynthesis", title: "On these speakers", multiple:true, required: false
 			input "speakerVolume", "number", title: "Select reminder volume", description: "0-100%", required: false, hideWhenEmpty: "speakers"
     		input "bedtimeMessage", "text", title: "Bedtime message to announce", defaultValue: "Time for bed!", required: false, hideWhenEmpty: "speakers"
-            input "enforcementMessage", "text", title: "Enforcement message to announce. (can be left blank to disable)", defaultValue: "Turning off ${switches} in ${delayTime} seconds", required: false, hideWhenEmpty: "speakers"
+            input "enforcementMessage", "bool", title: "Announce enforcement message? (e.g. 'Turning off bedroom lights in 60 seconds')", defaultValue: true, required: false, hideWhenEmpty: "speakers"
         }
     
     section("Options") {
-    	input "delayTime", "number", title: "Delay shutoff time (defaults to 60 second minimum)", defaultValue: "60",  range: "60..*", required: false
+    	input "delayTime", "number", title: "Delay shutoff time (defaults to 60 seconds)", defaultValue: "60",  range: "1..*", required: false
 		input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
 				options: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 		input "modes", "mode", title: "Set for specific modes", multiple: true, required: false
@@ -67,21 +67,23 @@ def updated() {
 def initialize() {
     schedule(bedtime, startHandler)
     schedule(endBedtime, endHandler)
-	//initialize delayTimeMS value to 60000ms unless another value was input
-    state.delayTimeMS = (delayTime * 1000) ?: 60000
-    log.debug "delayTimeMS = ${state.delayTimeMS}"
+	//initialize delayTime value to 60s unless another value was input
+    state.delayTime = delayTime ?: 60
+    state.notificationMessage = null
 }
 
 def startHandler() {
 	if ( getAllOk() ) {
        	log.debug "Bedtime enforcement started at ${bedtime}."
     
-    	//check for speakers and message
-   		if (speakers && bedtimeMessage) { deliverMessage(bedtimeMessage) }
+    	//Queue bedtime message if set
+   		if (bedtimeMessage) { composeNotification(true, null)}        
         
-        //turn off switches
-		switches.off()
-        //switchOn(now)
+        //check for, queue enforcement message and turn off switches
+        switchOn(null)
+        
+        //deliver Bedtime and/or Enforcement Message
+        if (state.notificationMessage) { deliverMessage(state.notificationMessage) }
         
     	//watch for switch turned on
     	subscribe(switches, "switch.on", switchOn)
@@ -93,6 +95,7 @@ def startHandler() {
 
 def endHandler() {
 	log.debug "Bedtime enforcement ended at ${endBedtime}."
+    state.notificationMessage = null
     unsubscribe()
     unschedule()
 }
@@ -104,31 +107,28 @@ def switchOn(event) {
     //check switch status before sending OFF command
     switches.each {
 		if ( it.currentState('switch').value.equals('on') ) {
-			log.debug "The following switch is on: " + it
-			if (event) { 
-            	log.debug "SwitchOn(now) event received"
-                switches.off() 
-            } else {
-            	log.debug "SwitchOn(now) event was NOT received"
-            	runIn(state.delayTimeMS, turnOffAllSwitches) 
-            }
-        	//log.debug it + " turning off in " + state.delayTimeMS + "ms."
-    		if (speakers && enforcementMessage) { deliverMessage(enforcementMessage) }
+			if (enforcementMessage) { composeNotification(null, it) }
+			runIn(state.delayTime, turnOffAllSwitches)
         	}
 		if ( it.currentState('switch').value.equals('off') ) {
-			log.debug "The following switch is off: " + it
+			log.debug "The following switch is off: ${it}"
 			}
 		}
 }
 
 def turnOffAllSwitches() { 
-	log.debug "turnOffAllSwitches() method was called"
     switches.off()
+}
+
+def composeNotification(bedtimeMessageFlag=null, switchName=null) {
+	if (bedtimeMessageFlag) { state.notificationMessage = "${bedtimeMessage}" }   
+    if (switchName) { 
+        state.notificationMessage = "${state.notificationMessage} Turning off ${switchName} in ${state.delayTime} seconds!"
+        }
 }
 
 def deliverMessage(msg) {
 	if (speakerVolume) { speakers?.setLevel(speakerVolume) }
-    log.debug "Speakers: ${speakers} enabled."
     speakers?.speak(msg)
 }
 
